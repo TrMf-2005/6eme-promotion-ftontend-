@@ -1,5 +1,5 @@
 // Adapter l'URL une fois le backend déployé sur Render (comme les autres projets)
-const API_BASE = "https://site-promo-backend.onrender.com/api";
+const API_BASE = "https://sixeme-promotion-backend-1.onrender.com/api";
 
 const Auth = {
   getSiteToken: () => sessionStorage.getItem("siteToken"),
