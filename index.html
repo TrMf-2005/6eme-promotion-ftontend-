@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Notre promo</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <div class="brand">
+    <img id="logo" src="" alt="Logo université" class="hidden" />
+    <span id="siteName">Notre promo</span>
+  </div>
+  <span class="lock">🔒 Accès protégé</span>
+</header>
+
+<main class="container">
+
+  <div id="gate" class="card" style="margin-top:20px;">
+    <p style="margin:0 0 10px; font-weight:600;">Entrer le mot de passe de la promo</p>
+    <input id="password" type="password" placeholder="Mot de passe" />
+    <p id="gateError" class="error-msg hidden"></p>
+    <button class="btn btn-primary btn-block" onclick="verifyAccess()">Accéder au site</button>
+  </div>
+
+  <div id="content" class="hidden" style="margin-top:24px;">
+    <h1 style="font-size:22px; margin:0 0 8px;">Restons connectés</h1>
+    <p class="text-muted" style="margin:0 0 20px;">
+      Mets à jour tes coordonnées pour qu'on garde le contact, où que tu sois.
+    </p>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="formulaire.html">Mettre à jour mes infos</a>
+      <a class="btn btn-outline" href="annuaire.html">Voir l'annuaire</a>
+    </div>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <div><a href="confidentialite.html">Politique de confidentialité</a></div>
+  <div class="credit">Site conçu par TWO TF's Codes · <a href="admin/login.html">Administration</a></div>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  async function loadSiteInfo() {
+    try {
+      const info = await apiCall("/public/site-info");
+      document.getElementById("siteName").textContent = info.siteName || "Notre promo";
+      if (info.logoBase64) {
+        const logo = document.getElementById("logo");
+        logo.src = info.logoBase64;
+        logo.classList.remove("hidden");
+      }
+    } catch (e) { /* réglages pas encore configurés, on garde les valeurs par défaut */ }
+  }
+
+  async function verifyAccess() {
+    const password = document.getElementById("password").value;
+    const errorEl = document.getElementById("gateError");
+    errorEl.classList.add("hidden");
+    try {
+      const { token } = await apiCall("/public/verify-access", { method: "POST", body: { password } });
+      Auth.setSiteToken(token);
+      document.getElementById("gate").classList.add("hidden");
+      document.getElementById("content").classList.remove("hidden");
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.classList.remove("hidden");
+    }
+  }
+
+  // Si déjà vérifié dans cette session, on saute directement le mot de passe
+  if (Auth.getSiteToken()) {
+    document.getElementById("gate").classList.add("hidden");
+    document.getElementById("content").classList.remove("hidden");
+  }
+
+  loadSiteInfo();
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Annuaire</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html"><span>Notre promo</span></a>
+</header>
+
+<main class="container" style="padding-bottom:40px;">
+  <h1 style="font-size:20px;">Annuaire</h1>
+  <input id="search" placeholder="Rechercher un nom" oninput="debouncedSearch()" />
+
+  <div id="list" style="display:flex; flex-direction:column; gap:10px; margin-top:14px;"></div>
+  <p id="empty" class="text-muted hidden">Aucun résultat.</p>
+</main>
+
+<footer class="site-footer">
+  <div class="credit">Site conçu par TWO TF's Codes · <a href="admin/login.html">Administration</a></div>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  requireSiteAccess();
+
+  let debounceTimer;
+  function debouncedSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadMembers, 300);
+  }
+
+  function initials(prenom, nom) {
+    return `${(prenom[0] || "").toUpperCase()}${(nom[0] || "").toUpperCase()}`;
+  }
+
+  async function loadMembers() {
+    const q = document.getElementById("search").value.trim();
+    const list = document.getElementById("list");
+    const empty = document.getElementById("empty");
+    try {
+      const members = await apiCall(`/public/members${q ? "?q=" + encodeURIComponent(q) : ""}`);
+      list.innerHTML = "";
+      empty.classList.toggle("hidden", members.length > 0);
+
+      members.forEach((m) => {
+        const row = document.createElement("div");
+        row.className = "card member-row";
+        row.innerHTML = `
+          <div class="avatar">${m.photoBase64 ? `<img src="${m.photoBase64}" />` : initials(m.prenom, m.nom)}</div>
+          <div class="member-info">
+            <p class="name">${m.prenom} ${m.nom}</p>
+            <p class="city">${m.ville || ""}</p>
+          </div>
+          ${m.whatsapp ? `<a href="${m.whatsapp}" target="_blank" title="WhatsApp">💬</a>` : ""}
+        `;
+        list.appendChild(row);
+      });
+    } catch (e) {
+      list.innerHTML = `<p class="error-msg">${e.message}</p>`;
+    }
+  }
+
+  loadMembers();
+</script>
+</body>
+</html>

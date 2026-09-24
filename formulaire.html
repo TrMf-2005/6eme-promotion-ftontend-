@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mettre à jour mes infos</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html"><span id="siteName">Notre promo</span></a>
+</header>
+
+<main class="container" style="padding-bottom:40px;">
+  <h1 style="font-size:20px;">Mettre à jour mes infos</h1>
+
+  <div class="card">
+    <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px;">
+      <label style="border:1px dashed var(--yellow); border-radius:50%; width:56px; height:56px; display:flex; align-items:center; justify-content:center; cursor:pointer; text-transform:none; font-size:11px; color:var(--text-muted); overflow:hidden;">
+        <img id="photoPreview" class="hidden" style="width:100%;height:100%;object-fit:cover;" />
+        <span id="photoLabel">📷</span>
+        <input type="file" id="photo" accept="image/*" class="hidden" onchange="previewPhoto()" />
+      </label>
+      <div>
+        <p style="margin:0; font-weight:600; font-size:13px;">Photo</p>
+        <p class="text-muted" style="margin:0;">Facultatif, mais recommandé</p>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px;">
+      <input id="nom" placeholder="Nom *" />
+      <input id="prenom" placeholder="Prénom *" />
+    </div>
+    <input id="telephone" placeholder="Téléphone *" />
+    <input id="ville" placeholder="Ville actuelle *" />
+    <input id="email" type="email" placeholder="Email" />
+
+    <p class="section-title">Réseaux (facultatif)</p>
+    <input id="whatsapp" placeholder="Lien WhatsApp" />
+    <input id="tiktok" placeholder="Lien TikTok" />
+    <input id="facebook" placeholder="Lien Facebook" />
+
+    <p class="section-title">Autres détails</p>
+    <textarea id="autresDetails" rows="3" placeholder="Profession, études, ou toute autre info utile pour te joindre"></textarea>
+
+    <p id="formError" class="error-msg hidden"></p>
+    <p id="formSuccess" class="hidden" style="color:#2E7D3A; font-size:13px;">Envoyé ! Ta fiche est en attente de validation par un administrateur.</p>
+
+    <button class="btn btn-primary btn-block" onclick="submitForm()">Envoyer pour validation</button>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="credit">Site conçu par TWO TF's Codes · <a href="admin/login.html">Administration</a></div>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  requireSiteAccess();
+
+  let photoBase64 = null;
+
+  async function previewPhoto() {
+    const file = document.getElementById("photo").files[0];
+    if (!file) return;
+    photoBase64 = await fileToBase64(file);
+    const preview = document.getElementById("photoPreview");
+    preview.src = photoBase64;
+    preview.classList.remove("hidden");
+    document.getElementById("photoLabel").classList.add("hidden");
+  }
+
+  async function submitForm() {
+    const errorEl = document.getElementById("formError");
+    const successEl = document.getElementById("formSuccess");
+    errorEl.classList.add("hidden");
+    successEl.classList.add("hidden");
+
+    const payload = {
+      nom: document.getElementById("nom").value.trim(),
+      prenom: document.getElementById("prenom").value.trim(),
+      telephone: document.getElementById("telephone").value.trim(),
+      ville: document.getElementById("ville").value.trim(),
+      email: document.getElementById("email").value.trim(),
+      whatsapp: document.getElementById("whatsapp").value.trim(),
+      tiktok: document.getElementById("tiktok").value.trim(),
+      facebook: document.getElementById("facebook").value.trim(),
+      autresDetails: document.getElementById("autresDetails").value.trim(),
+      photoBase64,
+    };
+
+    if (!payload.nom || !payload.prenom || !payload.telephone || !payload.ville) {
+      errorEl.textContent = "Nom, prénom, téléphone et ville sont obligatoires.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+
+    try {
+      await apiCall("/public/members/submit", { method: "POST", body: payload });
+      successEl.classList.remove("hidden");
+      document.querySelectorAll("input, textarea").forEach((el) => (el.value = ""));
+      document.getElementById("photoPreview").classList.add("hidden");
+      document.getElementById("photoLabel").classList.remove("hidden");
+      photoBase64 = null;
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.classList.remove("hidden");
+    }
+  }
+</script>
+</body>
+</html>
