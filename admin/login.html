@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Administration</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<main class="container" style="max-width:380px; margin-top:60px;">
+  <h1 style="font-size:20px; text-align:center;">Espace admin</h1>
+
+  <div id="loginForm" class="card">
+    <input id="username" placeholder="Identifiant" />
+    <input id="password" type="password" placeholder="Mot de passe" />
+    <p id="loginError" class="error-msg hidden"></p>
+    <button class="btn btn-primary btn-block" onclick="login()">Se connecter</button>
+  </div>
+
+  <div id="setupForm" class="card hidden">
+    <p class="text-muted" style="margin-top:0;">Première connexion : choisis ton mot de passe définitif.</p>
+    <input id="newPassword" type="password" placeholder="Nouveau mot de passe (8 caractères min.)" />
+    <p id="setupError" class="error-msg hidden"></p>
+    <button class="btn btn-primary btn-block" onclick="setupPassword()">Valider</button>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script>
+  let pendingSetupToken = null;
+
+  async function login() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    const errorEl = document.getElementById("loginError");
+    errorEl.classList.add("hidden");
+
+    try {
+      const data = await apiCall("/admin/login", { method: "POST", body: { username, password } });
+      if (data.mustChangePassword) {
+        pendingSetupToken = data.setupToken;
+        document.getElementById("loginForm").classList.add("hidden");
+        document.getElementById("setupForm").classList.remove("hidden");
+        return;
+      }
+      Auth.setAdminToken(data.token);
+      Auth.setAdminInfo({ displayName: data.displayName, role: data.role });
+      window.location.href = "dashboard.html";
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.classList.remove("hidden");
+    }
+  }
+
+  async function setupPassword() {
+    const newPassword = document.getElementById("newPassword").value;
+    const errorEl = document.getElementById("setupError");
+    errorEl.classList.add("hidden");
+
+    try {
+      const data = await apiCall("/admin/set-password", {
+        method: "POST",
+        body: { setupToken: pendingSetupToken, newPassword },
+      });
+      Auth.setAdminToken(data.token);
+      Auth.setAdminInfo({ displayName: data.displayName, role: data.role });
+      window.location.href = "dashboard.html";
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.classList.remove("hidden");
+    }
+  }
+</script>
+</body>
+</html>

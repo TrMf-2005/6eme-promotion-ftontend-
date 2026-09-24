@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Réglages — Admin</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<main class="container" style="margin-top:20px; padding-bottom:40px;">
+  <h1 style="font-size:18px;">Réglages du site</h1>
+
+  <div class="card">
+    <p class="section-title" style="margin-top:0;">Nom et logo</p>
+    <input id="siteName" placeholder="Nom de la promo" />
+    <label style="display:block; font-size:12px; color:var(--text-muted); text-transform:none; margin-bottom:6px;">Logo de l'université</label>
+    <input type="file" id="logo" accept="image/*" onchange="previewLogo()" />
+    <img id="logoPreview" class="hidden" style="height:50px; margin:8px 0;" />
+    <p id="saveInfoMsg" class="hidden" style="color:#2E7D3A; font-size:13px;">Enregistré.</p>
+    <button class="btn btn-primary" onclick="saveInfo()">Enregistrer</button>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <p class="section-title" style="margin-top:0;">Mot de passe d'accès au site</p>
+    <input id="newSitePassword" type="password" placeholder="Nouveau mot de passe (6 caractères min.)" />
+    <p id="passwordError" class="error-msg hidden"></p>
+    <p id="passwordMsg" class="hidden" style="color:#2E7D3A; font-size:13px;">Mot de passe mis à jour.</p>
+    <button class="btn btn-primary" onclick="savePassword()">Mettre à jour</button>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="nav.js"></script>
+<script>
+  requireAdminAccess();
+  renderAdminNav("reglages");
+
+  let logoBase64 = null;
+
+  async function loadSettings() {
+    const settings = await apiCall("/admin/settings", { isAdmin: true });
+    document.getElementById("siteName").value = settings.siteName || "";
+    if (settings.logoBase64) {
+      const img = document.getElementById("logoPreview");
+      img.src = settings.logoBase64;
+      img.classList.remove("hidden");
+    }
+  }
+
+  async function previewLogo() {
+    const file = document.getElementById("logo").files[0];
+    if (!file) return;
+    logoBase64 = await fileToBase64(file);
+    const img = document.getElementById("logoPreview");
+    img.src = logoBase64;
+    img.classList.remove("hidden");
+  }
+
+  async function saveInfo() {
+    const payload = { siteName: document.getElementById("siteName").value.trim() };
+    if (logoBase64) payload.logoBase64 = logoBase64;
+    await apiCall("/admin/settings", { method: "PUT", body: payload, isAdmin: true });
+    const msg = document.getElementById("saveInfoMsg");
+    msg.classList.remove("hidden");
+    setTimeout(() => msg.classList.add("hidden"), 2500);
+  }
+
+  async function savePassword() {
+    const errorEl = document.getElementById("passwordError");
+    const msg = document.getElementById("passwordMsg");
+    errorEl.classList.add("hidden"); msg.classList.add("hidden");
+    try {
+      await apiCall("/admin/settings/password", {
+        method: "PUT",
+        body: { newPassword: document.getElementById("newSitePassword").value },
+        isAdmin: true,
+      });
+      msg.classList.remove("hidden");
+      document.getElementById("newSitePassword").value = "";
+    } catch (e) {
+      errorEl.textContent = e.message;
+      errorEl.classList.remove("hidden");
+    }
+  }
+
+  loadSettings();
+</script>
+</body>
+</html>

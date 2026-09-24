@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Membres — Admin</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<main class="container" style="margin-top:20px; padding-bottom:40px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:14px;">
+    <h1 style="font-size:18px; margin:0;">Membres</h1>
+    <button class="btn btn-outline" onclick="exportMembers()">Exporter</button>
+  </div>
+
+  <div style="display:flex; gap:8px;">
+    <input id="search" placeholder="Rechercher un nom" oninput="debouncedSearch()" style="flex:1;" />
+    <select id="statusFilter" onchange="loadMembers()" style="width:140px;">
+      <option value="">Tous statuts</option>
+      <option value="validated">Validés</option>
+      <option value="pending">En attente</option>
+      <option value="refused">Refusés</option>
+    </select>
+  </div>
+
+  <div id="list" style="display:flex; flex-direction:column; gap:10px; margin-top:14px;"></div>
+</main>
+
+<div id="modalBackdrop" class="modal-backdrop">
+  <div class="modal"><div id="modalContent"></div></div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="nav.js"></script>
+<script>
+  requireAdminAccess();
+  renderAdminNav("membres");
+
+  let debounceTimer;
+  function debouncedSearch() { clearTimeout(debounceTimer); debounceTimer = setTimeout(loadMembers, 300); }
+
+  function initials(prenom, nom) {
+    return `${(prenom?.[0] || "").toUpperCase()}${(nom?.[0] || "").toUpperCase()}`;
+  }
+
+  const statusLabel = { validated: "Validé", pending: "En attente", refused: "Refusé" };
+
+  async function loadMembers() {
+    const q = document.getElementById("search").value.trim();
+    const status = document.getElementById("statusFilter").value;
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (status) params.set("status", status);
+
+    const members = await apiCall(`/admin/members?${params.toString()}`, { isAdmin: true });
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    members.forEach((m) => {
+      const row = document.createElement("div");
+      row.className = "card member-row";
+      row.innerHTML = `
+        <div class="avatar">${m.photoBase64 ? `<img src="${m.photoBase64}" />` : initials(m.prenom, m.nom)}</div>
+        <div class="member-info">
+          <p class="name">${m.prenom} ${m.nom} <span class="badge">${statusLabel[m.status]}</span></p>
+          <p class="city">${m.ville || ""}</p>
+        </div>
+        <button class="btn btn-outline" style="padding:6px 10px; font-size:12px;" onclick="openEdit('${m._id}')">Modifier</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  async function openEdit(id) {
+    const members = await apiCall(`/admin/members?q=`, { isAdmin: true });
+    const m = members.find((x) => x._id === id) || (await apiCall(`/admin/pending/${id}`, { isAdmin: true }));
+    const content = document.getElementById("modalContent");
+    content.innerHTML = `
+      <p class="section-title" style="margin-top:0;">Modifier la fiche</p>
+      <input id="editNom" value="${m.nom || ""}" placeholder="Nom" />
+      <input id="editPrenom" value="${m.prenom || ""}" placeholder="Prénom" />
+      <input id="editTelephone" value="${m.telephone || ""}" placeholder="Téléphone" />
+      <input id="editVille" value="${m.ville || ""}" placeholder="Ville" />
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-primary" onclick="saveEdit('${m._id}')">Enregistrer</button>
+        <button class="btn btn-danger-outline" onclick="removeMember('${m._id}')">Supprimer</button>
+      </div>
+    `;
+    document.getElementById("modalBackdrop").classList.add("open");
+  }
+
+  async function saveEdit(id) {
+    const payload = {
+      nom: document.getElementById("editNom").value.trim(),
+      prenom: document.getElementById("editPrenom").value.trim(),
+      telephone: document.getElementById("editTelephone").value.trim(),
+      ville: document.getElementById("editVille").value.trim(),
+    };
+    await apiCall(`/admin/members/${id}`, { method: "PUT", body: payload, isAdmin: true });
+    document.getElementById("modalBackdrop").classList.remove("open");
+    loadMembers();
+  }
+
+  async function removeMember(id) {
+    if (!confirm("Supprimer définitivement cette fiche ?")) return;
+    await apiCall(`/admin/members/${id}`, { method: "DELETE", isAdmin: true });
+    document.getElementById("modalBackdrop").classList.remove("open");
+    loadMembers();
+  }
+
+  async function exportMembers() {
+    const data = await apiCall("/admin/members/export", { isAdmin: true });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "membres-promo.json"; a.click();
+  }
+
+  document.getElementById("modalBackdrop").addEventListener("click", (e) => {
+    if (e.target.id === "modalBackdrop") e.target.classList.remove("open");
+  });
+
+  loadMembers();
+</script>
+</body>
+</html>

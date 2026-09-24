@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Administrateurs — Admin principal</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<main class="container" style="margin-top:20px; padding-bottom:40px;">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h1 style="font-size:18px; margin:0;">Administrateurs</h1>
+    <span class="badge">Admin principal</span>
+  </div>
+
+  <div id="list" style="display:flex; flex-direction:column; gap:10px; margin:14px 0;"></div>
+
+  <div class="card">
+    <p class="section-title" style="margin-top:0;">Ajouter un responsable</p>
+    <input id="newUsername" placeholder="Identifiant (ex: benoit.t)" />
+    <input id="newDisplayName" placeholder="Nom affiché (ex: Ben T.)" />
+    <button class="btn btn-primary" onclick="createAdmin()">Créer le compte</button>
+
+    <div id="tempPasswordBox" class="hidden" style="margin-top:14px; padding:12px; background:rgba(232,185,58,0.15); border-radius:8px; font-size:13px;">
+      Mot de passe temporaire à transmettre : <strong id="tempPasswordValue"></strong><br />
+      <span class="text-muted">Il devra le changer dès sa première connexion — tu ne le reverras plus après ça.</span>
+    </div>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="nav.js"></script>
+<script>
+  requireAdminAccess();
+  if (Auth.getAdminInfo()?.role !== "principal") window.location.href = "dashboard.html";
+  renderAdminNav("admins");
+
+  async function loadAdmins() {
+    const admins = await apiCall("/admin/admins", { isAdmin: true });
+    document.getElementById("list").innerHTML = admins
+      .map(
+        (a) => `
+        <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <p style="margin:0; font-weight:600; font-size:14px;">${a.displayName} <span class="badge">${a.role === "principal" ? "Principal" : "Responsable"}</span></p>
+            <p class="text-muted" style="margin:2px 0 0;">@${a.username}${a.mustChangePassword ? " · mot de passe pas encore défini" : ""}</p>
+          </div>
+          ${a.role !== "principal" ? `<button class="btn btn-danger-outline" style="padding:6px 10px; font-size:12px;" onclick="removeAdmin('${a._id}')">Retirer</button>` : ""}
+        </div>`
+      )
+      .join("");
+  }
+
+  async function createAdmin() {
+    const username = document.getElementById("newUsername").value.trim();
+    const displayName = document.getElementById("newDisplayName").value.trim();
+    if (!username || !displayName) return;
+
+    const result = await apiCall("/admin/admins", { method: "POST", body: { username, displayName }, isAdmin: true });
+    document.getElementById("tempPasswordValue").textContent = result.tempPassword;
+    document.getElementById("tempPasswordBox").classList.remove("hidden");
+    document.getElementById("newUsername").value = "";
+    document.getElementById("newDisplayName").value = "";
+    loadAdmins();
+  }
+
+  async function removeAdmin(id) {
+    if (!confirm("Retirer les droits admin de cette personne ?")) return;
+    await apiCall(`/admin/admins/${id}`, { method: "DELETE", isAdmin: true });
+    loadAdmins();
+  }
+
+  loadAdmins();
+</script>
+</body>
+</html>

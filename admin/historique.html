@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Historique — Admin principal</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<main class="container" style="margin-top:20px; padding-bottom:40px;">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h1 style="font-size:18px; margin:0;">Historique des actions</h1>
+    <span class="badge">Admin principal</span>
+  </div>
+
+  <div style="display:flex; gap:8px; margin:14px 0;">
+    <select id="adminFilter" onchange="loadLogs()" style="flex:1;"><option value="">Tous les admins</option></select>
+    <select id="actionFilter" onchange="loadLogs()" style="flex:1;">
+      <option value="">Toutes les actions</option>
+      <option value="validate">Validations</option>
+      <option value="edit">Modifications</option>
+      <option value="refuse">Refus</option>
+      <option value="delete">Suppressions</option>
+    </select>
+  </div>
+
+  <div id="logList"></div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="nav.js"></script>
+<script>
+  requireAdminAccess();
+  if (Auth.getAdminInfo()?.role !== "principal") window.location.href = "dashboard.html";
+  renderAdminNav("historique");
+
+  const actionLabel = {
+    validate: "a validé la fiche de",
+    refuse: "a refusé une soumission de",
+    edit: "a modifié la fiche de",
+    delete: "a supprimé la fiche de",
+  };
+
+  async function loadAdminOptions() {
+    const admins = await apiCall("/admin/admins", { isAdmin: true });
+    const select = document.getElementById("adminFilter");
+    admins.forEach((a) => {
+      const opt = document.createElement("option");
+      opt.value = a._id; opt.textContent = a.displayName;
+      select.appendChild(opt);
+    });
+  }
+
+  async function loadLogs() {
+    const params = new URLSearchParams();
+    const admin = document.getElementById("adminFilter").value;
+    const action = document.getElementById("actionFilter").value;
+    if (admin) params.set("admin", admin);
+    if (action) params.set("action", action);
+
+    const logs = await apiCall(`/admin/logs?${params.toString()}`, { isAdmin: true });
+    const list = document.getElementById("logList");
+    list.innerHTML = logs
+      .map(
+        (l) => `
+        <div style="padding:11px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <p style="margin:0;">${l.adminDisplayName} ${actionLabel[l.action] || l.action} ${l.memberName || ""}</p>
+          <p class="text-muted" style="margin:2px 0 0;">${new Date(l.createdAt).toLocaleString("fr-FR")}</p>
+        </div>`
+      )
+      .join("");
+  }
+
+  loadAdminOptions();
+  loadLogs();
+</script>
+</body>
+</html>
