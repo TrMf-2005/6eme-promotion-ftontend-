@@ -14,9 +14,11 @@ function renderAdminNav(active) {
 
   const nav = document.createElement("nav");
   nav.className = "admin-nav";
-  nav.innerHTML = links
-    .map((l) => `<a href="${l.href}" class="${l.key === active ? "active" : ""}">${l.label}</a>`)
-    .join("") + `<a href="#" onclick="logout()" style="margin-left:auto;">Déconnexion</a>`;
+  nav.innerHTML =
+    `<a href="../index.html">← Retour au site</a>` +
+    `<a href="../annuaire.html" target="_blank">Voir l'annuaire public</a>` +
+    links.map((l) => `<a href="${l.href}" class="${l.key === active ? "active" : ""}">${l.label}</a>`).join("") +
+    `<a href="#" onclick="logout()" style="margin-left:auto;">Déconnexion</a>`;
 
   document.body.prepend(nav);
 
