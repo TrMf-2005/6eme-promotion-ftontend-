@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fiche membre</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="annuaire.html">← Retour à l'annuaire</a>
+</header>
+
+<main class="container" style="padding-bottom:40px;">
+  <div id="memberCard" class="card"></div>
+  <p id="error" class="error-msg hidden"></p>
+</main>
+
+<footer class="site-footer">
+  <div class="credit">Site conçu par TWO TF's Codes · <a href="admin/login.html">Administration</a></div>
+</footer>
+
+<script src="js/api.js"></script>
+<script>
+  requireSiteAccess();
+
+  function initials(prenom, nom) {
+    return `${(prenom?.[0] || "").toUpperCase()}${(nom?.[0] || "").toUpperCase()}`;
+  }
+
+  async function loadMember() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+    if (!id) { window.location.href = "annuaire.html"; return; }
+
+    try {
+      const m = await apiCall(`/public/members/${id}`);
+      document.getElementById("memberCard").innerHTML = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <div class="avatar" style="width:90px; height:90px; font-size:26px; margin:0 auto 12px;">
+            ${m.photoBase64 ? `<img src="${m.photoBase64}" />` : initials(m.prenom, m.nom)}
+          </div>
+          <h1 style="font-size:20px; margin:0;">${m.prenom} ${m.nom}</h1>
+          <p class="text-muted" style="margin:2px 0 0;">${m.ville || ""}</p>
+        </div>
+
+        ${m.email ? `<div class="detail-row"><span>Email</span><span>${m.email}</span></div>` : ""}
+        ${m.whatsapp ? `<div class="detail-row"><span>WhatsApp</span><span><a href="${m.whatsapp}" target="_blank">Contacter</a></span></div>` : ""}
+        ${m.tiktok ? `<div class="detail-row"><span>TikTok</span><span><a href="${m.tiktok}" target="_blank">Voir le profil</a></span></div>` : ""}
+        ${m.facebook ? `<div class="detail-row"><span>Facebook</span><span><a href="${m.facebook}" target="_blank">Voir le profil</a></span></div>` : ""}
+        ${m.autresDetails ? `<div class="detail-row"><span>À propos</span><span>${m.autresDetails}</span></div>` : ""}
+      `;
+    } catch (e) {
+      document.getElementById("error").textContent = e.message;
+      document.getElementById("error").classList.remove("hidden");
+    }
+  }
+
+  loadMember();
+</script>
+</body>
+</html>
