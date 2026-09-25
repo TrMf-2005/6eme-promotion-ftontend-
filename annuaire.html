@@ -47,16 +47,18 @@
       list.innerHTML = "";
       empty.classList.toggle("hidden", members.length > 0);
 
-      members.forEach((m) => {
-        const row = document.createElement("div");
+members.forEach((m) => {
+        const row = document.createElement("a");
+        row.href = `membre.html?id=${m._id}`;
         row.className = "card member-row";
+        row.style.display = "flex";
         row.innerHTML = `
           <div class="avatar">${m.photoBase64 ? `<img src="${m.photoBase64}" />` : initials(m.prenom, m.nom)}</div>
           <div class="member-info">
             <p class="name">${m.prenom} ${m.nom}</p>
             <p class="city">${m.ville || ""}</p>
           </div>
-          ${m.whatsapp ? `<a href="${m.whatsapp}" target="_blank" title="WhatsApp">💬</a>` : ""}
+          <span style="color:var(--text-muted);">→</span>
         `;
         list.appendChild(row);
       });
