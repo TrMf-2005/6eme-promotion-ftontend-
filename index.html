@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site de la promo</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <img id="logo" class="logo" src="" alt="Logo" style="display:none;">
+  <h1 id="nom-promo">Site de la promo</h1>
+  <nav>
+    <a href="index.html" class="active">Accueil</a>
+    <a href="pages/formulaire.html">Mettre à jour mes infos</a>
+    <a href="pages/annuaire.html">Annuaire</a>
+    <a href="pages/admin-connexion.html">Espace admin</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-inner">
+    <span class="hero-badge">🔒 Accès réservé à la promo</span>
+    <h2 id="message-accroche">Restons en contact, où que la vie nous mène.</h2>
+    <p>
+      La promotion se disperse, mais on ne se perd pas de vue. Renseigne tes
+      coordonnées pour rester joignable par tes camarades, et retrouve tout le
+      monde dans l'annuaire.
+    </p>
+    <div class="btn-row">
+      <a class="btn" href="pages/formulaire.html">Renseigner mes coordonnées</a>
+      <a class="btn secondaire" href="pages/annuaire.html">Voir l'annuaire</a>
+    </div>
+  </div>
+</section>
+
+<main>
+  <div class="card">
+    <h2>Comment ça marche</h2>
+    <p>1. Remplis le formulaire avec le mot de passe commun de la promo.</p>
+    <p>2. Un administrateur valide ta fiche.</p>
+    <p>3. Tes camarades te retrouvent dans l'annuaire, à jour.</p>
+  </div>
+</main>
+
+<footer>&copy; <span id="annee"></span> — Site de la promo</footer>
+
+<script src="js/config.js"></script>
+<script>
+  document.getElementById('annee').textContent = new Date().getFullYear();
+
+  fetch(`${API_URL}/public/settings`)
+    .then((r) => r.json())
+    .then((s) => {
+      if (s.nomPromo) {
+        document.getElementById('nom-promo').textContent = s.nomPromo;
+        document.title = s.nomPromo;
+      }
+      if (s.messageAccroche) document.getElementById('message-accroche').textContent = s.messageAccroche;
+      if (s.logoUrl) {
+        const logo = document.getElementById('logo');
+        logo.src = s.logoUrl;
+        logo.style.display = 'block';
+      }
+    })
+    .catch(() => {});
+</script>
+</body>
+</html>
