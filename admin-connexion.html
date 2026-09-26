@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion admin</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header>
+  <h1>Site de la promo</h1>
+  <nav>
+    <a href="../index.html">Accueil</a>
+    <a href="formulaire.html">Mettre à jour mes infos</a>
+    <a href="annuaire.html">Annuaire</a>
+    <a href="admin-connexion.html" class="active">Espace admin</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card" id="bloc-connexion">
+    <h2>Connexion administrateur</h2>
+    <div id="feedback-connexion"></div>
+    <form id="form-connexion">
+      <label>Identifiant</label>
+      <input name="username" required>
+      <label>Mot de passe</label>
+      <input type="password" name="password" required>
+      <p style="margin-top:1.2rem;"><button class="btn" type="submit">Se connecter</button></p>
+    </form>
+  </div>
+
+  <div class="card" id="bloc-nouveau-mdp" style="display:none;">
+    <h2>Première connexion</h2>
+    <p>Choisis ton mot de passe définitif (au moins 8 caractères). Il sera haché : personne, pas même l'admin principal, ne pourra le consulter par la suite.</p>
+    <div id="feedback-mdp"></div>
+    <form id="form-nouveau-mdp">
+      <label>Nouveau mot de passe</label>
+      <input type="password" id="nouveau-mdp" minlength="8" required>
+      <p style="margin-top:1.2rem;"><button class="btn" type="submit">Valider</button></p>
+    </form>
+  </div>
+</main>
+
+<footer>&copy; <span id="annee"></span> — Site de la promo</footer>
+
+<script src="../js/config.js"></script>
+<script>
+document.getElementById('annee').textContent = new Date().getFullYear();
+
+document.getElementById('form-connexion').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const feedback = document.getElementById('feedback-connexion');
+  feedback.innerHTML = '';
+  const data = Object.fromEntries(new FormData(e.target).entries());
+
+  try {
+    const res = await fetch(`${API_URL}/auth/connexion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const resultat = await res.json();
+    if (!res.ok) throw new Error(resultat.message);
+
+    localStorage.setItem('token', resultat.token);
+    localStorage.setItem('admin', JSON.stringify(resultat.admin));
+
+    if (resultat.admin.mustChangePassword) {
+      document.getElementById('bloc-connexion').style.display = 'none';
+      document.getElementById('bloc-nouveau-mdp').style.display = 'block';
+    } else {
+      window.location.href = 'admin-dashboard.html';
+    }
+  } catch (err) {
+    feedback.innerHTML = `<p class="message erreur">${err.message || 'Erreur de connexion.'}</p>`;
+  }
+});
+
+document.getElementById('form-nouveau-mdp').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const feedback = document.getElementById('feedback-mdp');
+  feedback.innerHTML = '';
+  const nouveauMotDePasse = document.getElementById('nouveau-mdp').value;
+  const token = localStorage.getItem('token');
+
+  try {
+    const res = await fetch(`${API_URL}/auth/definir-mot-de-passe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ nouveauMotDePasse }),
+    });
+    const resultat = await res.json();
+    if (!res.ok) throw new Error(resultat.message);
+
+    window.location.href = 'admin-dashboard.html';
+  } catch (err) {
+    feedback.innerHTML = `<p class="message erreur">${err.message || 'Erreur.'}</p>`;
+  }
+});
+</script>
+</body>
+</html>
