@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Annuaire de la promo</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header>
+  <h1>Site de la promo</h1>
+  <nav>
+    <a href="../index.html">Accueil</a>
+    <a href="formulaire.html">Mettre à jour mes infos</a>
+    <a href="annuaire.html" class="active">Annuaire</a>
+    <a href="admin-connexion.html">Espace admin</a>
+  </nav>
+</header>
+
+<main>
+  <h2>Annuaire des membres</h2>
+  <div class="recherche-barre">
+    <input type="text" id="recherche" placeholder="Rechercher par nom...">
+  </div>
+  <div id="resultats" class="grille-annuaire"></div>
+  <p id="aucun-resultat" style="display:none;">Aucun membre trouvé.</p>
+</main>
+
+<footer>&copy; <span id="annee"></span> — Site de la promo</footer>
+
+<script src="../js/config.js"></script>
+<script>
+document.getElementById('annee').textContent = new Date().getFullYear();
+
+async function chargerAnnuaire(q = '') {
+  const resultats = document.getElementById('resultats');
+  const aucunResultat = document.getElementById('aucun-resultat');
+  resultats.innerHTML = '<p>Chargement...</p>';
+
+  const res = await fetch(`${API_URL}/public/annuaire?q=${encodeURIComponent(q)}`);
+  const membres = await res.json();
+
+  resultats.innerHTML = '';
+  aucunResultat.style.display = membres.length === 0 ? 'block' : 'none';
+
+  membres.forEach((m) => {
+    const div = document.createElement('a');
+    div.className = 'fiche-membre';
+    div.href = `profil.html?id=${m._id}`;
+    div.innerHTML = `
+      <img src="${m.photoUrl || 'https://via.placeholder.com/80?text=%20'}" alt="${m.prenom} ${m.nom}">
+      <div><strong>${m.prenom} ${m.nom}</strong></div>
+      <div>${m.ville || ''}</div>
+    `;
+    resultats.appendChild(div);
+  });
+}
+
+let delaiRecherche;
+document.getElementById('recherche').addEventListener('input', (e) => {
+  clearTimeout(delaiRecherche);
+  delaiRecherche = setTimeout(() => chargerAnnuaire(e.target.value), 300);
+});
+
+chargerAnnuaire();
+</script>
+</body>
+</html>

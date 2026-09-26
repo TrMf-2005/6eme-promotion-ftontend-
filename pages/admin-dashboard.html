@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace admin</title>
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .onglets { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .onglets button { background: var(--paper); border: 1.5px solid var(--line); color: var(--navy-950); padding: 0.5rem 1.1rem; border-radius: 999px; cursor: pointer; font-weight: 700; font-family: 'Manrope', sans-serif; font-size: 0.9rem; }
+  .onglets button.actif { background: var(--gold-500); color: var(--navy-950); border-color: var(--gold-500); }
+  .section { display: none; }
+  .section.actif { display: block; }
+  main { max-width: 1100px; }
+  #qui-est-connecte { color: var(--gold-500) !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Espace admin</h1>
+  <nav>
+    <span id="qui-est-connecte" style="font-weight:600;"></span>
+    <a href="#" onclick="deconnexion()">Se déconnecter</a>
+  </nav>
+</header>
+
+<main>
+  <div class="onglets" id="onglets"></div>
+
+  <!-- Tableau de bord -->
+  <section class="section" id="section-dashboard">
+    <h2>Statistiques</h2>
+    <div class="stat-cards" id="stats"></div>
+  </section>
+
+  <!-- File d'attente -->
+  <section class="section" id="section-attente">
+    <h2>File d'attente de validation</h2>
+    <div id="liste-attente"></div>
+  </section>
+
+  <!-- Membres -->
+  <section class="section" id="section-membres">
+    <h2>Membres</h2>
+    <div class="recherche-barre">
+      <input type="text" id="recherche-membres" placeholder="Rechercher...">
+      <select id="filtre-statut">
+        <option value="">Tous les statuts</option>
+        <option value="en_attente">En attente</option>
+        <option value="valide">Validé</option>
+        <option value="refuse">Refusé</option>
+      </select>
+      <button class="btn secondaire" onclick="ouvrirFormulaireAjout()">+ Ajouter</button>
+      <a class="btn" href="#" id="lien-export">Exporter (CSV)</a>
+    </div>
+    <div id="liste-membres"></div>
+  </section>
+
+  <!-- Formulaire ajout / édition membre (modale simple) -->
+  <section class="section" id="section-form-membre">
+    <h2 id="titre-form-membre">Ajouter un membre</h2>
+    <form id="form-membre">
+      <input type="hidden" id="membre-id">
+      <label>Nom *</label><input id="m-nom" required>
+      <label>Prénom *</label><input id="m-prenom" required>
+      <label>Téléphone *</label><input id="m-telephone" required>
+      <label>Ville</label><input id="m-ville">
+      <label>Email</label><input id="m-email">
+      <label>WhatsApp</label><input id="m-whatsapp">
+      <label>TikTok</label><input id="m-tiktok">
+      <label>Facebook</label><input id="m-facebook">
+      <label>Détails</label><textarea id="m-details"></textarea>
+      <label>Statut</label>
+      <select id="m-statut">
+        <option value="en_attente">En attente</option>
+        <option value="valide">Validé</option>
+        <option value="refuse">Refusé</option>
+      </select>
+      <p style="margin-top:1rem;">
+        <button type="submit" class="btn">Enregistrer</button>
+        <button type="button" class="btn secondaire" onclick="afficherSection('membres')">Annuler</button>
+      </p>
+    </form>
+  </section>
+
+  <!-- Réglages -->
+  <section class="section" id="section-reglages">
+    <h2>Réglages du site</h2>
+    <form id="form-reglages">
+      <label>Nom de la promo</label><input id="r-nom">
+      <label>URL du logo</label><input id="r-logo">
+      <label>Message d'accroche</label><textarea id="r-message"></textarea>
+      <label>Nouveau mot de passe d'accès (laisser vide pour ne pas changer)</label>
+      <input type="password" id="r-mdp-acces">
+      <p style="margin-top:1rem;"><button class="btn" type="submit">Enregistrer</button></p>
+    </form>
+    <div id="feedback-reglages"></div>
+  </section>
+
+  <!-- Historique (Régis uniquement) -->
+  <section class="section" id="section-historique">
+    <h2>Historique des actions</h2>
+    <div id="liste-historique"></div>
+  </section>
+
+  <!-- Comptes admin (Régis uniquement) -->
+  <section class="section" id="section-comptes">
+    <h2>Comptes administrateurs</h2>
+    <div id="liste-comptes"></div>
+    <div class="card">
+      <h3>Ajouter un administrateur</h3>
+      <form id="form-nouvel-admin">
+        <label>Identifiant</label><input id="na-username" required>
+        <label>Nom affiché</label><input id="na-displayname">
+        <p style="margin-top:1rem;"><button class="btn" type="submit">Créer le compte</button></p>
+      </form>
+      <div id="feedback-nouvel-admin"></div>
+    </div>
+  </section>
+</main>
+
+<footer>&copy; <span id="annee"></span> — Site de la promo</footer>
+
+<script src="../js/config.js"></script>
+<script src="../js/admin-common.js"></script>
+<script>
+if (exigerConnexion()) {
+  document.getElementById('annee').textContent = new Date().getFullYear();
+  const admin = getAdmin();
+  document.getElementById('qui-est-connecte').textContent = `${admin.displayName || admin.username} (${admin.role === 'principal' ? 'admin principal' : 'admin'})`;
+  document.getElementById('lien-export').href = `${API_URL}/admin/export`;
+  // On ajoute le token à l'export via un fetch + téléchargement plutôt qu'un lien direct
+  document.getElementById('lien-export').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const res = await fetch(`${API_URL}/admin/export`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'contacts-promo.csv'; a.click();
+  });
+
+  const onglets = [
+    { id: 'dashboard', label: 'Tableau de bord', charge: chargerDashboard },
+    { id: 'attente', label: 'File d\'attente', charge: chargerAttente },
+    { id: 'membres', label: 'Membres', charge: chargerMembres },
+    { id: 'reglages', label: 'Réglages', charge: chargerReglages },
+  ];
+  if (admin.role === 'principal') {
+    onglets.push({ id: 'historique', label: 'Historique', charge: chargerHistorique });
+    onglets.push({ id: 'comptes', label: 'Comptes admin', charge: chargerComptes });
+  }
+
+  const conteneurOnglets = document.getElementById('onglets');
+  onglets.forEach((o) => {
+    const btn = document.createElement('button');
+    btn.textContent = o.label;
+    btn.onclick = () => afficherSection(o.id);
+    btn.id = `onglet-${o.id}`;
+    conteneurOnglets.appendChild(btn);
+  });
+
+  window.afficherSection = function (id) {
+    document.querySelectorAll('.section').forEach((s) => s.classList.remove('actif'));
+    document.querySelectorAll('.onglets button').forEach((b) => b.classList.remove('actif'));
+    document.getElementById(`section-${id}`).classList.add('actif');
+    const btn = document.getElementById(`onglet-${id}`);
+    if (btn) btn.classList.add('actif');
+    const onglet = onglets.find((o) => o.id === id);
+    if (onglet) onglet.charge();
+  };
+
+  afficherSection('dashboard');
+}
+
+// ---------- Tableau de bord ----------
+async function chargerDashboard() {
+  const stats = await appelApi('/admin/dashboard');
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="chiffre">${stats.total}</div>Total</div>
+    <div class="stat-card"><div class="chiffre">${stats.valides}</div>Validés</div>
+    <div class="stat-card"><div class="chiffre">${stats.enAttente}</div>En attente</div>
+    <div class="stat-card"><div class="chiffre">${stats.refuses}</div>Refusés</div>
+  `;
+}
+
+// ---------- File d'attente ----------
+async function chargerAttente() {
+  const membres = await appelApi('/admin/file-attente');
+  const conteneur = document.getElementById('liste-attente');
+  if (membres.length === 0) { conteneur.innerHTML = '<p>Aucune soumission en attente.</p>'; return; }
+
+  conteneur.innerHTML = membres.map((m) => `
+    <div class="card">
+      <div style="display:flex; gap:1rem; align-items:flex-start;">
+        ${m.photoUrl ? `<img src="${m.photoUrl}" style="width:70px;height:70px;border-radius:50%;object-fit:cover;">` : ''}
+        <div style="flex:1;">
+          <strong>${echapperHtml(m.prenom)} ${echapperHtml(m.nom)}</strong><br>
+          Téléphone : ${echapperHtml(m.telephone)}<br>
+          ${m.ville ? `Ville : ${echapperHtml(m.ville)}<br>` : ''}
+          ${m.email ? `Email : ${echapperHtml(m.email)}<br>` : ''}
+          ${m.whatsapp ? `WhatsApp : ${echapperHtml(m.whatsapp)}<br>` : ''}
+          ${m.tiktok ? `TikTok : ${echapperHtml(m.tiktok)}<br>` : ''}
+          ${m.facebook ? `Facebook : ${echapperHtml(m.facebook)}<br>` : ''}
+          ${m.details ? `Détails : ${echapperHtml(m.details)}<br>` : ''}
+        </div>
+      </div>
+      <div class="actions-ligne" style="margin-top:1rem;">
+        <button class="btn" onclick="validerMembre('${m._id}')">Valider</button>
+        <button class="btn danger" onclick="refuserMembre('${m._id}')">Refuser</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function validerMembre(id) {
+  await appelApi(`/admin/membres/${id}/valider`, { method: 'POST' });
+  chargerAttente();
+}
+async function refuserMembre(id) {
+  if (!confirm('Refuser cette soumission ?')) return;
+  await appelApi(`/admin/membres/${id}/refuser`, { method: 'POST' });
+  chargerAttente();
+}
+
+// ---------- Membres ----------
+let membreEnEdition = null;
+
+async function chargerMembres() {
+  const q = document.getElementById('recherche-membres').value;
+  const status = document.getElementById('filtre-statut').value;
+  const params = new URLSearchParams({ q, status }).toString();
+  const membres = await appelApi(`/admin/membres?${params}`);
+
+  const conteneur = document.getElementById('liste-membres');
+  if (membres.length === 0) { conteneur.innerHTML = '<p>Aucun membre trouvé.</p>'; return; }
+
+  conteneur.innerHTML = `
+    <table>
+      <thead><tr><th>Nom</th><th>Téléphone</th><th>Ville</th><th>Statut</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${membres.map((m) => `
+          <tr>
+            <td>${echapperHtml(m.prenom)} ${echapperHtml(m.nom)}</td>
+            <td>${echapperHtml(m.telephone)}</td>
+            <td>${echapperHtml(m.ville || '')}</td>
+            <td><span class="badge ${m.status}">${m.status.replace('_',' ')}</span></td>
+            <td class="actions-ligne">
+              <button class="btn secondaire" onclick='ouvrirFormulaireEdition(${JSON.stringify(m)})'>Modifier</button>
+              <button class="btn danger" onclick="supprimerMembre('${m._id}')">Supprimer</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+document.getElementById('recherche-membres').addEventListener('input', () => chargerMembres());
+document.getElementById('filtre-statut').addEventListener('change', () => chargerMembres());
+
+function ouvrirFormulaireAjout() {
+  membreEnEdition = null;
+  document.getElementById('titre-form-membre').textContent = 'Ajouter un membre';
+  document.getElementById('form-membre').reset();
+  document.getElementById('membre-id').value = '';
+  afficherSection('form-membre');
+}
+
+function ouvrirFormulaireEdition(m) {
+  membreEnEdition = m._id;
+  document.getElementById('titre-form-membre').textContent = 'Modifier le membre';
+  document.getElementById('membre-id').value = m._id;
+  document.getElementById('m-nom').value = m.nom || '';
+  document.getElementById('m-prenom').value = m.prenom || '';
+  document.getElementById('m-telephone').value = m.telephone || '';
+  document.getElementById('m-ville').value = m.ville || '';
+  document.getElementById('m-email').value = m.email || '';
+  document.getElementById('m-whatsapp').value = m.whatsapp || '';
+  document.getElementById('m-tiktok').value = m.tiktok || '';
+  document.getElementById('m-facebook').value = m.facebook || '';
+  document.getElementById('m-details').value = m.details || '';
+  document.getElementById('m-statut').value = m.status || 'en_attente';
+  afficherSection('form-membre');
+}
+
+document.getElementById('form-membre').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    nom: document.getElementById('m-nom').value,
+    prenom: document.getElementById('m-prenom').value,
+    telephone: document.getElementById('m-telephone').value,
+    ville: document.getElementById('m-ville').value,
+    email: document.getElementById('m-email').value,
+    whatsapp: document.getElementById('m-whatsapp').value,
+    tiktok: document.getElementById('m-tiktok').value,
+    facebook: document.getElementById('m-facebook').value,
+    details: document.getElementById('m-details').value,
+    status: document.getElementById('m-statut').value,
+  };
+
+  if (membreEnEdition) {
+    await appelApi(`/admin/membres/${membreEnEdition}`, { method: 'PUT', body: JSON.stringify(data) });
+  } else {
+    await appelApi('/admin/membres', { method: 'POST', body: JSON.stringify(data) });
+  }
+  afficherSection('membres');
+});
+
+async function supprimerMembre(id) {
+  if (!confirm('Supprimer définitivement cette fiche ?')) return;
+  await appelApi(`/admin/membres/${id}`, { method: 'DELETE' });
+  chargerMembres();
+}
+
+// ---------- Réglages ----------
+async function chargerReglages() {
+  const r = await appelApi('/admin/reglages');
+  document.getElementById('r-nom').value = r.nomPromo || '';
+  document.getElementById('r-logo').value = r.logoUrl || '';
+  document.getElementById('r-message').value = r.messageAccroche || '';
+  document.getElementById('r-mdp-acces').value = '';
+}
+
+document.getElementById('form-reglages').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const feedback = document.getElementById('feedback-reglages');
+  const data = {
+    nomPromo: document.getElementById('r-nom').value,
+    logoUrl: document.getElementById('r-logo').value,
+    messageAccroche: document.getElementById('r-message').value,
+  };
+  const mdp = document.getElementById('r-mdp-acces').value;
+  if (mdp) data.nouveauMotDePasseAcces = mdp;
+
+  try {
+    const res = await appelApi('/admin/reglages', { method: 'PUT', body: JSON.stringify(data) });
+    feedback.innerHTML = `<p class="message succes">${res.message}</p>`;
+  } catch (err) {
+    feedback.innerHTML = `<p class="message erreur">${err.message}</p>`;
+  }
+});
+
+// ---------- Historique (Régis) ----------
+async function chargerHistorique() {
+  const historique = await appelApi('/principal/historique');
+  const conteneur = document.getElementById('liste-historique');
+  if (historique.length === 0) { conteneur.innerHTML = '<p>Aucune action enregistrée.</p>'; return; }
+
+  conteneur.innerHTML = `
+    <table>
+      <thead><tr><th>Date</th><th>Admin</th><th>Action</th><th>Membre</th><th>Détails</th></tr></thead>
+      <tbody>
+        ${historique.map((h) => `
+          <tr>
+            <td>${new Date(h.createdAt).toLocaleString('fr-FR')}</td>
+            <td>${echapperHtml(h.adminUsername)}</td>
+            <td>${h.actionType}</td>
+            <td>${echapperHtml(h.memberNomComplet || '—')}</td>
+            <td>${echapperHtml(h.details || '')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ---------- Comptes admin (Régis) ----------
+async function chargerComptes() {
+  const admins = await appelApi('/principal/admins');
+  const conteneur = document.getElementById('liste-comptes');
+  conteneur.innerHTML = admins.map((a) => `
+    <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <strong>${echapperHtml(a.displayName || a.username)}</strong> (@${echapperHtml(a.username)}) — ${a.role === 'principal' ? 'Admin principal' : 'Admin'}
+        ${a.mustChangePassword ? ' <span class="badge en_attente">mot de passe temporaire non changé</span>' : ''}
+      </div>
+      ${a.role !== 'principal' ? `
+        <div class="actions-ligne">
+          <button class="btn secondaire" onclick="reinitialiserMdpAdmin('${a._id}')">Réinitialiser mdp</button>
+          <button class="btn danger" onclick="supprimerAdmin('${a._id}')">Retirer</button>
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+}
+
+document.getElementById('form-nouvel-admin').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const feedback = document.getElementById('feedback-nouvel-admin');
+  const data = {
+    username: document.getElementById('na-username').value,
+    displayName: document.getElementById('na-displayname').value,
+  };
+  try {
+    const res = await appelApi('/principal/admins', { method: 'POST', body: JSON.stringify(data) });
+    feedback.innerHTML = `<p class="message succes">${res.message}<br>Mot de passe temporaire : <strong>${res.motDePasseTemporaire}</strong></p>`;
+    e.target.reset();
+    chargerComptes();
+  } catch (err) {
+    feedback.innerHTML = `<p class="message erreur">${err.message}</p>`;
+  }
+});
+
+async function reinitialiserMdpAdmin(id) {
+  const res = await appelApi(`/principal/admins/${id}/reinitialiser`, { method: 'POST' });
+  alert(`${res.message}\nMot de passe temporaire : ${res.motDePasseTemporaire}`);
+  chargerComptes();
+}
+
+async function supprimerAdmin(id) {
+  if (!confirm('Retirer ce compte admin ?')) return;
+  await appelApi(`/principal/admins/${id}`, { method: 'DELETE' });
+  chargerComptes();
+}
+</script>
+</body>
+</html>

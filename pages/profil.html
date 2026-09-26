@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profil</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header>
+  <h1>Site de la promo</h1>
+  <nav>
+    <a href="../index.html">Accueil</a>
+    <a href="formulaire.html">Mettre à jour mes infos</a>
+    <a href="annuaire.html" class="active">Annuaire</a>
+    <a href="admin-connexion.html">Espace admin</a>
+  </nav>
+</header>
+
+<main>
+  <a class="lien-retour" href="annuaire.html">&larr; Retour à l'annuaire</a>
+  <div id="contenu">
+    <p>Chargement...</p>
+  </div>
+</main>
+
+<footer>&copy; <span id="annee"></span> — Site de la promo</footer>
+
+<script src="../js/config.js"></script>
+<script>
+document.getElementById('annee').textContent = new Date().getFullYear();
+
+function echapper(texte) {
+  const div = document.createElement('div');
+  div.textContent = texte || '';
+  return div.innerHTML;
+}
+
+function ligneChamp(etiquette, valeur, libre) {
+  if (!valeur) return '';
+  return `
+    <div class="profil-champ">
+      <div class="etiquette">${etiquette}</div>
+      <div class="valeur${libre ? ' libre' : ''}">${echapper(valeur)}</div>
+    </div>
+  `;
+}
+
+async function chargerProfil() {
+  const id = new URLSearchParams(window.location.search).get('id');
+  const contenu = document.getElementById('contenu');
+  if (!id) { contenu.innerHTML = '<p class="message erreur">Profil introuvable.</p>'; return; }
+
+  try {
+    const res = await fetch(`${API_URL}/public/annuaire/${id}`);
+    if (!res.ok) throw new Error('Profil introuvable ou non validé.');
+    const m = await res.json();
+
+    document.title = `${m.prenom} ${m.nom} — Site de la promo`;
+
+    contenu.innerHTML = `
+      <div class="profil-entete">
+        <img src="${m.photoUrl || 'https://via.placeholder.com/110?text=%20'}" alt="${echapper(m.prenom)} ${echapper(m.nom)}">
+        <div>
+          <h2>${echapper(m.prenom)} ${echapper(m.nom)}</h2>
+          ${m.ville ? `<div class="ville">${echapper(m.ville)}</div>` : ''}
+          <div class="profil-liens">
+            ${m.whatsapp ? `<a href="${m.whatsapp}" target="_blank" rel="noopener">💬 WhatsApp</a>` : ''}
+            ${m.tiktok ? `<a href="${m.tiktok}" target="_blank" rel="noopener">🎵 TikTok</a>` : ''}
+            ${m.facebook ? `<a href="${m.facebook}" target="_blank" rel="noopener">📘 Facebook</a>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Coordonnées</h2>
+        <div class="profil-champs">
+          ${ligneChamp('Téléphone', m.telephone)}
+          ${ligneChamp('Email', m.email)}
+          ${ligneChamp('Ville actuelle', m.ville)}
+          ${ligneChamp('À propos', m.details, true)}
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    contenu.innerHTML = `<p class="message erreur">${err.message}</p>`;
+  }
+}
+
+chargerProfil();
+</script>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mettre à jour mes infos</title>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<header>
+  <h1>Site de la promo</h1>
+  <nav>
+    <a href="../index.html">Accueil</a>
+    <a href="formulaire.html" class="active">Mettre à jour mes infos</a>
+    <a href="annuaire.html">Annuaire</a>
+    <a href="admin-connexion.html">Espace admin</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card" id="etape-mot-de-passe">
+    <h2>Accès réservé à la promo</h2>
+    <p>Entre le mot de passe commun communiqué au groupe pour accéder au formulaire.</p>
+    <label for="mdp-commun">Mot de passe</label>
+    <input type="password" id="mdp-commun">
+    <p id="erreur-mdp" class="message erreur" style="display:none;"></p>
+    <p><button class="btn" onclick="verifierMotDePasse()">Continuer</button></p>
+  </div>
+
+  <div class="card" id="etape-formulaire" style="display:none;">
+    <h2>Mes coordonnées</h2>
+    <div id="feedback"></div>
+    <form id="form-inscription">
+      <label>Nom *</label>
+      <input name="nom" required>
+      <label>Prénom *</label>
+      <input name="prenom" required>
+      <label>Téléphone *</label>
+      <input name="telephone" required>
+      <label>Ville actuelle</label>
+      <input name="ville">
+      <label>Adresse email</label>
+      <input type="email" name="email">
+      <label>Photo (facultative mais recommandée)</label>
+      <input type="file" id="photo-input" accept="image/*">
+      <label>Lien WhatsApp</label>
+      <input name="whatsapp" placeholder="https://wa.me/...">
+      <label>Lien TikTok</label>
+      <input name="tiktok" placeholder="https://tiktok.com/@...">
+      <label>Lien Facebook</label>
+      <input name="facebook" placeholder="https://facebook.com/...">
+      <label>Autres détails</label>
+      <textarea name="details" placeholder="Ce que tu veux ajouter..."></textarea>
+      <p style="margin-top:1.2rem;">
+        <button type="submit" class="btn">Envoyer</button>
+      </p>
+    </form>
+  </div>
+</main>
+
+<footer>&copy; <span id="annee"></span> — Site de la promo</footer>
+
+<script src="../js/config.js"></script>
+<script>
+document.getElementById('annee').textContent = new Date().getFullYear();
+let motDePasseValide = '';
+
+async function verifierMotDePasse() {
+  const mdp = document.getElementById('mdp-commun').value;
+  const erreur = document.getElementById('erreur-mdp');
+  erreur.style.display = 'none';
+
+  try {
+    const res = await fetch(`${API_URL}/public/verifier-mot-de-passe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ motDePasse: mdp }),
+    });
+    if (!res.ok) throw new Error((await res.json()).message);
+
+    motDePasseValide = mdp;
+    document.getElementById('etape-mot-de-passe').style.display = 'none';
+    document.getElementById('etape-formulaire').style.display = 'block';
+  } catch (err) {
+    erreur.textContent = err.message || 'Mot de passe incorrect.';
+    erreur.style.display = 'block';
+  }
+}
+
+function fichierEnBase64(fichier) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(fichier);
+  });
+}
+
+document.getElementById('form-inscription').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const feedback = document.getElementById('feedback');
+  feedback.innerHTML = '';
+
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  data.motDePasse = motDePasseValide;
+
+  const fichierPhoto = document.getElementById('photo-input').files[0];
+  if (fichierPhoto) {
+    data.photoUrl = await fichierEnBase64(fichierPhoto);
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/public/inscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const resultat = await res.json();
+    if (!res.ok) throw new Error(resultat.message);
+
+    feedback.innerHTML = `<p class="message succes">${resultat.message}</p>`;
+    e.target.reset();
+  } catch (err) {
+    feedback.innerHTML = `<p class="message erreur">${err.message || 'Une erreur est survenue.'}</p>`;
+  }
+});
+</script>
+</body>
+</html>
