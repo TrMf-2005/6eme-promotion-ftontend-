@@ -5,6 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>6ème promotion ER</title>
 <link rel="stylesheet" href="css/style.css">
+<style>
+/* ===== Menu hamburger + adaptation mobile ===== */
+header{position:relative}
+.menu-toggle{
+  display:none;margin-left:auto;flex:0 0 auto;
+  width:46px;height:46px;padding:0;cursor:pointer;
+  background:transparent;border:1px solid rgba(255,255,255,.28);border-radius:12px;
+  flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  -webkit-tap-highlight-color:transparent;
+}
+.menu-toggle span{display:block;width:22px;height:2px;background:#fff;border-radius:2px;transition:transform .25s ease,opacity .2s ease}
+.menu-toggle.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.menu-toggle.open span:nth-child(2){opacity:0}
+.menu-toggle.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+@media (max-width: 820px){
+  header{display:flex !important;flex-wrap:nowrap !important;align-items:center;gap:12px;padding:12px 16px !important}
+  header .logo{width:46px;height:46px;flex:0 0 auto;object-fit:contain;margin:0}
+  header h1{flex:1 1 auto;min-width:0;margin:0;font-size:1.05rem;line-height:1.25}
+  .menu-toggle{display:flex}
+
+  header nav{
+    display:none !important;
+    position:absolute;top:100%;left:0;right:0;z-index:50;
+    flex-direction:column;gap:6px;padding:12px 16px 18px;
+    background:#0f1b2d;border-top:1px solid rgba(255,255,255,.12);
+    box-shadow:0 14px 28px rgba(0,0,0,.4);
+  }
+  header nav.open{display:flex !important}
+  header nav a{display:block;margin:0;padding:14px 16px;border-radius:12px;font-size:1.05rem}
+
+  .hero h2{font-size:clamp(1.8rem,8vw,2.4rem);line-height:1.15}
+  .hero p{font-size:1.02rem;line-height:1.6}
+  .hero .btn-row{display:flex;flex-direction:column;gap:12px}
+  .hero .btn-row .btn{width:100%;box-sizing:border-box;text-align:center}
+}
+</style>
   <meta property="og:type" content="website">
 <meta property="og:title" content="6ème Promotion ER-ENSET-UNSTIM">
 <meta property="og:description" content="Restons en contact, où que la vie nous mène. Mets à jour tes coordonnées et retrouve tes camarades.">
@@ -17,8 +54,11 @@
 <body>
 <header>
   <img id="logo" class="logo" src="" alt="Logo" style="display:none;">
-  <h1 id="nom-promo">Site de la promo</h1></br>
-  <nav>
+  <h1 id="nom-promo">Site de la promo</h1>
+  <button class="menu-toggle" id="menuToggle" type="button" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu">
+    <span></span><span></span><span></span>
+  </button>
+  <nav id="menu">
     <a href="index.html" class="active">Accueil</a>
     <a href="pages/formulaire.html">Mettre à jour mes infos</a>
     <a href="pages/annuaire.html">Annuaire</a>
@@ -54,6 +94,23 @@
 
 <script src="js/config.js"></script>
 <script>
+  // Menu hamburger
+  (function () {
+    const btn = document.getElementById('menuToggle');
+    const menu = document.getElementById('menu');
+    function setMenu(open) {
+      menu.classList.toggle('open', open);
+      btn.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+    }
+    btn.addEventListener('click', (e) => { e.stopPropagation(); setMenu(!menu.classList.contains('open')); });
+    menu.addEventListener('click', (e) => { if (e.target.tagName === 'A') setMenu(false); });
+    document.addEventListener('click', (e) => { if (!menu.contains(e.target)) setMenu(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setMenu(false); });
+    window.addEventListener('resize', () => { if (window.innerWidth > 820) setMenu(false); });
+  })();
+
   document.getElementById('annee').textContent = new Date().getFullYear();
 
   fetch(`${API_URL}/public/settings`)
